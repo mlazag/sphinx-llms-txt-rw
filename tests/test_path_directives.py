@@ -1,6 +1,6 @@
-"""Test the path directive processing functionality in sphinx_llms_txt."""
+"""Test the path directive processing functionality in sphinx_llms_txt_rw."""
 
-from sphinx_llms_txt import DocumentProcessor
+from sphinx_llms_txt_rw import DocumentProcessor
 
 
 def test_process_path_directives(tmp_path):

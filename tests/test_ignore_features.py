@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from sphinx_llms_txt import DocumentProcessor
+from sphinx_llms_txt_rw import DocumentProcessor
 
 
 def test_process_ignore_blocks():
@@ -144,7 +144,7 @@ def test_build_with_ignore_features(basic_sphinx_app):
 
 def test_manager_mark_page_ignored():
     """Test that manager can mark pages as ignored."""
-    from sphinx_llms_txt import LLMSFullManager
+    from sphinx_llms_txt_rw import LLMSFullManager
 
     manager = LLMSFullManager()
 

@@ -1,6 +1,6 @@
-"""Test the sphinx_llms_txt extension."""
+"""Test the sphinx_llms_txt_rw extension."""
 
-from sphinx_llms_txt import (
+from sphinx_llms_txt_rw import (
     DocumentCollector,
     DocumentProcessor,
     FileWriter,
@@ -11,7 +11,7 @@ from sphinx_llms_txt import (
 
 def test_version():
     """Test that the version is defined."""
-    from sphinx_llms_txt import __version__
+    from sphinx_llms_txt_rw import __version__
 
     assert __version__
 
@@ -43,11 +43,11 @@ def test_setup_returns_valid_dict():
 
 def test_builder_inited_with_disallowed_builder():
     """Test that disallowed builders do not trigger extension setup."""
-    import sphinx_llms_txt
+    import sphinx_llms_txt_rw
 
     # Reset global state
-    sphinx_llms_txt._manager = sphinx_llms_txt.LLMSFullManager()
-    sphinx_llms_txt._root_first_paragraph = ""
+    sphinx_llms_txt_rw._manager = sphinx_llms_txt_rw.LLMSFullManager()
+    sphinx_llms_txt_rw._root_first_paragraph = ""
 
     # Mock a Sphinx app with a disallowed builder
     class MockBuilder:
@@ -374,7 +374,7 @@ def test_write_verbose_info_with_baseurl(tmp_path):
 
 def test_get_source_suffixes_with_dict():
     """Test _get_source_suffixes method with dict source_suffix."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with dict source_suffix
     class MockApp:
@@ -392,7 +392,7 @@ def test_get_source_suffixes_with_dict():
 
 def test_get_source_suffixes_with_list():
     """Test _get_source_suffixes method with list source_suffix."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with list source_suffix
     class MockApp:
@@ -410,7 +410,7 @@ def test_get_source_suffixes_with_list():
 
 def test_get_source_suffixes_with_string():
     """Test _get_source_suffixes method with string source_suffix."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with string source_suffix
     class MockApp:
@@ -428,7 +428,7 @@ def test_get_source_suffixes_with_string():
 
 def test_get_source_suffixes_no_app():
     """Test _get_source_suffixes method with no app set."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     manager = LLMSFullManager()
 
@@ -440,7 +440,7 @@ def test_html_sourcelink_suffix_default():
     """Test html_sourcelink_suffix defaults to .txt when no app is set."""
     import tempfile
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     manager = LLMSFullManager()
     manager.set_config(
@@ -491,7 +491,7 @@ def test_html_sourcelink_suffix_custom():
     """Test html_sourcelink_suffix uses custom value from Sphinx config."""
     import tempfile
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with custom html_sourcelink_suffix
     class MockApp:
@@ -551,7 +551,7 @@ def test_html_sourcelink_suffix_with_dot():
     """Test html_sourcelink_suffix adds dot if missing."""
     import tempfile
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with html_sourcelink_suffix without leading dot
     class MockApp:
@@ -611,7 +611,7 @@ def test_mixed_source_file_formats():
     """Test handling of mixed source file formats (.rst, .md, .txt)."""
     import tempfile
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with multiple source suffixes
     class MockApp:
@@ -687,7 +687,7 @@ def test_source_suffix_detection_priority():
     """Test source suffix detection tries formats in correct order for docnames."""
     import tempfile
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Mock Sphinx app with ordered source suffixes
     class MockApp:
@@ -774,7 +774,7 @@ def test_summary_default_uses_first_paragraph():
     from docutils.parsers.rst import Parser
     from docutils.utils import new_document
 
-    from sphinx_llms_txt import build_finished, doctree_resolved
+    from sphinx_llms_txt_rw import build_finished, doctree_resolved
 
     # Create a proper document with settings
     settings = OptionParser(components=(Parser,)).get_default_values()
@@ -819,39 +819,39 @@ def test_summary_default_uses_first_paragraph():
     app = MockApp()
 
     # Reset the global state
-    import sphinx_llms_txt
+    import sphinx_llms_txt_rw
 
-    sphinx_llms_txt._root_first_paragraph = ""
+    sphinx_llms_txt_rw._root_first_paragraph = ""
 
     # Call doctree_resolved to extract the first paragraph
     doctree_resolved(app, doctree, "index")
 
     # Verify the first paragraph was extracted
     assert (
-        sphinx_llms_txt._root_first_paragraph
+        sphinx_llms_txt_rw._root_first_paragraph
         == "This is the first paragraph that should be used as summary."
     )
 
     # Mock the manager methods to avoid actual file operations
-    original_combine_sources = sphinx_llms_txt._manager.combine_sources
-    sphinx_llms_txt._manager.combine_sources = lambda outdir, srcdir: None
+    original_combine_sources = sphinx_llms_txt_rw._manager.combine_sources
+    sphinx_llms_txt_rw._manager.combine_sources = lambda outdir, srcdir: None
 
     # Call build_finished and verify the summary is set correctly
     build_finished(app, None)
 
     # Check that the summary was properly configured
     assert (
-        sphinx_llms_txt._manager.config["llms_txt_summary"]
+        sphinx_llms_txt_rw._manager.config["llms_txt_summary"]
         == "This is the first paragraph that should be used as summary."
     )
 
     # Restore original method
-    sphinx_llms_txt._manager.combine_sources = original_combine_sources
+    sphinx_llms_txt_rw._manager.combine_sources = original_combine_sources
 
 
 def test_code_files_include_exclude_patterns(tmp_path):
     """Test the +/- pattern syntax for llms_txt_code_files configuration."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Create test directory structure
     src_dir = tmp_path / "src"
@@ -909,7 +909,7 @@ def test_code_files_include_exclude_patterns(tmp_path):
 
 def test_code_files_exclude_only_patterns(tmp_path):
     """Test that exclude-only patterns result in no files being included."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Create test directory structure
     src_dir = tmp_path / "src"
@@ -942,7 +942,7 @@ def test_code_files_exclude_only_patterns(tmp_path):
 
 def test_code_files_no_prefix_patterns(tmp_path):
     """Test that patterns without prefix are ignored."""
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Create test directory structure
     src_dir = tmp_path / "src"
@@ -984,7 +984,7 @@ def test_code_files_ignored_patterns(tmp_path, caplog):
     """Test that patterns without +: or -: prefix log a warning and are ignored."""
     from unittest.mock import patch
 
-    from sphinx_llms_txt.manager import LLMSFullManager
+    from sphinx_llms_txt_rw.manager import LLMSFullManager
 
     # Create test directory structure
     src_dir = tmp_path / "src"
@@ -1003,7 +1003,7 @@ def test_code_files_ignored_patterns(tmp_path, caplog):
         captured_warnings.append(message)
 
     # Patch the logger to capture warnings
-    with patch("sphinx_llms_txt.manager.logger.warning", side_effect=capture_warning):
+    with patch("sphinx_llms_txt_rw.manager.logger.warning", side_effect=capture_warning):
         # Create manager and set source directory
         manager = LLMSFullManager()
         manager.srcdir = str(src_dir)

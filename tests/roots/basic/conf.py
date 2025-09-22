@@ -5,7 +5,7 @@ copyright = "2025, Test"
 author = "Test"
 
 extensions = [
-    "sphinx_llms_txt",
+    "sphinx_llms_txt_rw",
 ]
 
 templates_path = ["_templates"]
