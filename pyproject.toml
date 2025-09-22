@@ -6,13 +6,13 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sphinx-llms-txt"
+name = "sphinx-llms-txt-rw"
 description = "llms-full.txt generator for Sphinx"
 authors = [
-    {name = "Jared Dillard", email = "jared.dillard@gmail.com"},
+    {name = "Mladen Zagorac", email = "mlazag@proton.me"},
 ]
 maintainers = [
-    {name = "Jared Dillard", email = "jared.dillard@gmail.com"},
+    {name = "Mladen Zagorac", email = "mlazag@proton.me"},
 ]
 classifiers = [
     "Framework :: Sphinx :: Extension",
@@ -31,9 +31,9 @@ dependencies = [
 ]
 
 [project.urls]
-download = "https://pypi.org/project/sphinx-llms-txt/"
-source = "https://github.com/jdillard/sphinx-llms-txt"
-changelog = "https://github.com/jdillard/sphinx-llms-txt/blob/master/CHANGELOG.rst"
+download = "https://pypi.org/project/sphinx-llms-txt-rw/"
+source = "https://github.com/jdillard/sphinx-llms-txt-rw"
+changelog = "https://github.com/jdillard/sphinx-llms-txt-rw/blob/master/CHANGELOG.rst"
 
 [dependency-groups]
 dev = [
@@ -50,7 +50,7 @@ test = [
 
 
 [tool.setuptools.dynamic]
-version = {attr = "sphinx_llms_txt.__version__"}
+version = {attr = "sphinx_llms_txt_rw.__version__"}
 
 [tool.black]
 line-length = 88
