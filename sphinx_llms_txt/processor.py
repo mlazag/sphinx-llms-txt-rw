@@ -22,8 +22,11 @@ def build_directive_pattern(directives):
         A compiled regex pattern that matches the specified directives
     """
     directives_pattern = "|".join(re.escape(d) for d in directives)
+    # Updated pattern to handle any indentation, including numbered lists
+    # Captures: (prefix with any content before .., directive name, path)
     return re.compile(
-        r"^(\s*\.\.\s+(" + directives_pattern + r")::\s+)([^\s].+?)$", re.MULTILINE
+        r"^(.*?\.\.\s+(" + directives_pattern + r")::\s+)([^\s].+?)$",
+        re.MULTILINE
     )
 
 
@@ -33,6 +36,290 @@ class DocumentProcessor:
     def __init__(self, config: Dict[str, Any], srcdir: Optional[str] = None):
         self.config = config
         self.srcdir = srcdir
+        self.substitutions = {}
+        self._extract_substitutions()
+
+    def _extract_substitutions(self):
+        """Extract substitution definitions from rst_prolog."""
+        if not hasattr(self.config.get('app'), 'config'):
+            return
+
+        rst_prolog = getattr(self.config.get('app').config, 'rst_prolog', '')
+        if not rst_prolog:
+            return
+
+        # Pattern to match substitution definitions like:
+        # .. |variable name| replace:: replacement text
+        substitution_pattern = re.compile(
+            r'^\.\.\s+\|([^|]+)\|\s+replace::\s+(.+)$',
+            re.MULTILINE
+        )
+
+        matches = substitution_pattern.findall(rst_prolog)
+        for var_name, replacement in matches:
+            self.substitutions[var_name.strip()] = replacement.strip()
+
+        logger.debug(f"sphinx-llms-txt: Extracted {len(self.substitutions)} substitutions")
+
+    def _process_substitutions(self, content: str) -> str:
+        """Replace substitution variables with their values.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with substitutions replaced
+        """
+        if not self.substitutions:
+            return content
+
+        for var_name, replacement in self.substitutions.items():
+            # Replace |variable| with the replacement text
+            pattern = re.escape(f"|{var_name}|")
+            content = re.sub(pattern, replacement, content)
+
+        return content
+
+    def _remove_image_directives(self, content: str) -> str:
+        """Remove image directives from content.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with image directives removed
+        """
+        # Build pattern to match image directives using the existing function
+        image_pattern = build_directive_pattern(["image"])
+
+        # Remove all image directives (replace with empty string)
+        processed_content = image_pattern.sub('', content)
+
+        # Clean up any extra blank lines that might be left
+        processed_content = re.sub(r'\n\n+', '\n\n', processed_content)
+
+        return processed_content
+
+    def _remove_see_also_sections(self, content: str) -> str:
+        """Remove 'See also' sections and their content.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with 'See also' sections removed
+        """
+        lines = content.split('\n')
+        filtered_lines = []
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # Check if this line is "See also" (case insensitive, allowing for whitespace)
+            if line.strip().lower() in ['see also', '|sa|']:  # |sa| is your substitution
+                # Found a "See also" heading, skip it
+                i += 1
+
+                # Skip the section delimiter line (usually dashes)
+                if i < len(lines) and lines[i].strip() and all(c in '-=' for c in lines[i].strip()):
+                    i += 1
+
+                # Skip any blank lines after the delimiter
+                while i < len(lines) and not lines[i].strip():
+                    i += 1
+
+                # Keep skipping lines while they contain :doc: roles
+                while i < len(lines):
+                    current_line = lines[i].strip()
+                    # If line is empty, skip it but continue checking
+                    if not current_line:
+                        i += 1
+                        continue
+                    # If line contains :doc:, skip it
+                    elif ':doc:' in current_line:
+                        i += 1
+                        continue
+                    # If we hit content that doesn't contain :doc:, stop skipping
+                    else:
+                        break
+
+                # Don't increment i here, let the outer loop handle the current line
+                continue
+
+            filtered_lines.append(line)
+            i += 1
+
+        processed_content = '\n'.join(filtered_lines)
+
+        # Clean up any extra blank lines
+        processed_content = re.sub(r'\n\n\n+', '\n\n', processed_content)
+
+        return processed_content
+
+    def _remove_whats_next_sections(self, content: str) -> str:
+        """Remove 'What's next?' sections and their content.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with 'What's next?' sections removed
+        """
+        lines = content.split('\n')
+        filtered_lines = []
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+
+            # Check if this line is "What's next?" (case insensitive, allowing for whitespace)
+            if line.strip().lower() in ["what's next?", '|next|']:
+                # Found a "What's next?" heading, skip it
+                i += 1
+
+                # Skip the section delimiter line (usually dashes or equals)
+                if i < len(lines) and lines[i].strip() and all(c in '-=' for c in lines[i].strip()):
+                    i += 1
+
+                # Skip content until we find the next section header or end of file
+                while i < len(lines):
+                    current_line = lines[i].strip()
+
+                    # Check if this looks like a section header (next line has delimiters)
+                    if (i + 1 < len(lines) and current_line and
+                        lines[i + 1].strip() and
+                        all(c in '-=' for c in lines[i + 1].strip()) and
+                        len(lines[i + 1].strip()) >= len(current_line) - 2):  # Allow some tolerance
+                        # This is the start of the next section, stop skipping
+                        break
+
+                    i += 1
+
+                # Don't increment i here, let the outer loop handle the current line
+                continue
+
+            filtered_lines.append(line)
+            i += 1
+
+        processed_content = '\n'.join(filtered_lines)
+
+        # Clean up any extra blank lines
+        processed_content = re.sub(r'\n\n\n+', '\n\n', processed_content)
+
+        return processed_content
+
+    def _remove_unknown_directives(self, content: str) -> str:
+        """Remove unknown directives and comment-like content that Sphinx ignores.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with unknown directives removed
+        """
+        # Pattern to match lines starting with .. that are not legitimate directives
+        # This will match .. followed by anything, but we'll filter out known directives
+        lines = content.split('\n')
+        filtered_lines = []
+
+        # Known Sphinx directives that should be kept (we process some of these elsewhere)
+        known_directives = {
+            'include', 'image', 'figure', 'code-block', 'literalinclude', 'toctree',
+            'note', 'warning', 'tip', 'caution', 'danger', 'attention', 'important',
+            'seealso', 'versionadded', 'versionchanged', 'deprecated', 'rubric',
+            'centered', 'hlist', 'glossary', 'productionlist', 'highlight', 'math',
+            'index', 'meta', 'raw', 'replace', 'unicode', 'date', 'container',
+            'topic', 'sidebar', 'parsed-literal', 'epigraph', 'highlights',
+            'pull-quote', 'compound', 'table', 'csv-table', 'list-table',
+            'contents', 'sectnum', 'header', 'footer', 'class', 'role'
+        }
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            # Check if line starts with .. followed by something
+            if stripped.startswith('.. '):
+                # Extract potential directive name
+                parts = stripped[3:].split(':', 1)
+                if len(parts) > 1:
+                    directive_name = parts[0].strip()
+                    if directive_name not in known_directives:
+                        # This is an unknown directive, skip it
+                        i += 1
+                        continue
+                else:
+                    # Just .. with no directive (like bare comments), skip it
+                    i += 1
+                    continue
+
+            filtered_lines.append(line)
+            i += 1
+
+        processed_content = '\n'.join(filtered_lines)
+
+        # Clean up any extra blank lines
+        processed_content = re.sub(r'\n\n\n+', '\n\n', processed_content)
+
+        return processed_content
+
+    def _remove_block_directives(self, content: str) -> str:
+        """Remove specified block directives and all their indented content.
+
+        Args:
+            content: The content to process
+
+        Returns:
+            Content with specified block directives and their content removed
+        """
+        # Directives to completely remove (including their content)
+        directives_to_remove = {
+            'toctree', 'raw', 'container', 'only', 'ifconfig'
+        }
+
+        lines = content.split('\n')
+        filtered_lines = []
+
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            stripped = line.strip()
+
+            # Check if line starts with .. at beginning of line (no indentation)
+            if line.startswith('.. ') and stripped.startswith('.. '):
+                # Extract potential directive name
+                parts = stripped[3:].split(':', 1)
+                if len(parts) > 1:
+                    directive_name = parts[0].strip()
+                    if directive_name in directives_to_remove:
+                        # Found a directive to remove, skip it and all indented content
+                        i += 1
+
+                        # Skip all following lines that are indented or empty
+                        while i < len(lines):
+                            current_line = lines[i]
+                            # If line is empty or starts with whitespace (indented), skip it
+                            if not current_line.strip() or current_line.startswith(' ') or current_line.startswith('\t'):
+                                i += 1
+                                continue
+                            # If we hit a non-indented line, stop skipping
+                            else:
+                                break
+
+                        # Don't increment i here, let outer loop handle current line
+                        continue
+
+            filtered_lines.append(line)
+            i += 1
+
+        processed_content = '\n'.join(filtered_lines)
+
+        # Clean up any extra blank lines
+        processed_content = re.sub(r'\n\n\n+', '\n\n', processed_content)
+
+        return processed_content
 
     def process_content(self, content: str, source_path: Path) -> str:
         """Process directives in content that need path resolution.
@@ -44,7 +331,25 @@ class DocumentProcessor:
         Returns:
             Processed content with directives properly resolved
         """
-        # First process llms-txt-ignore blocks
+        # First process substitutions
+        content = self._process_substitutions(content)
+
+        # Remove unknown/comment directives
+        content = self._remove_unknown_directives(content)
+
+        # Remove block directives and their content
+        content = self._remove_block_directives(content)
+
+        # Remove image directives
+        content = self._remove_image_directives(content)
+
+        # Remove "See also" sections
+        content = self._remove_see_also_sections(content)
+
+        # Remove "What's next" sections
+        content = self._remove_whats_next_sections(content)
+
+        # Then process llms-txt-ignore blocks
         content = self._process_ignore_blocks(content)
 
         # Then process include directives
@@ -235,46 +540,68 @@ class DocumentProcessor:
     def _resolve_include_paths(
         self, include_path: str, source_path: Path
     ) -> List[Path]:
-        """Resolve possible paths for an include directive.
-
-        Args:
-            include_path: The path from the include directive
-            source_path: The path to the source file
-
-        Returns:
-            List of possible paths to try
-        """
+        """Resolve possible paths for an include directive."""
         possible_paths = []
+
+        if not self.srcdir:
+            self._debug_log(f"No srcdir available for resolving includes")
+            return possible_paths
+
+        srcdir_path = Path(self.srcdir)
+
+        self._debug_log(f"Resolving include '{include_path}' from source '{source_path}'")
+        self._debug_log(f"srcdir is '{srcdir_path}'")
 
         # If it's an absolute path, treat it as relative to srcdir
         if os.path.isabs(include_path):
-            # Remove the leading slash and treat as relative to srcdir
             relative_path = include_path.lstrip("/")
-            if self.srcdir:
-                possible_paths.append((Path(self.srcdir) / relative_path).resolve())
+            resolved_path = (srcdir_path / relative_path).resolve()
+            possible_paths.append(resolved_path)
+            self._debug_log(f"Absolute include resolved to: {resolved_path}")
         else:
-            # Relative to the source file (in _sources directory)
-            possible_paths.append((source_path.parent / include_path).resolve())
-
-            # If we're in _sources directory, try relative to the original source
-            # directory
+            # Extract the relative document path from the _sources path
+            # Check if this is a file from _sources or from actual source directory
             if "_sources" in str(source_path):
-                # Extract the relative path portion from the source path
-                rel_path, rel_dir, _ = self._extract_relative_document_path(source_path)
+                # Original logic for files from _source directory
+                rel_doc_path, rel_doc_dir, rel_doc_path_parts = self._extract_relative_document_path(source_path)
 
-                # If we have the original source directory from Sphinx
-                if self.srcdir:
-                    # Try in the srcdir root
-                    possible_paths.append((Path(self.srcdir) / include_path).resolve())
+                self._debug_log(f"Extracted rel_doc_path='{rel_doc_path}', rel_doc_dir='{rel_doc_dir}'")
 
-                    # If we have a relative path, try in the corresponding source
-                    # subdirectory
-                    if rel_path and rel_dir:
-                        possible_paths.append(
-                            (Path(self.srcdir) / rel_dir / include_path).resolve()
-                        )
+                if rel_doc_path:
+                    # Calculate the original document's full path
+                    original_doc_path = srcdir_path / rel_doc_path
+                    original_doc_dir = original_doc_path.parent
+                    resolved_path = (original_doc_dir / include_path).resolve()
+                    possible_paths.append(resolved_path)
+                    self._debug_log(f"Relative include resolved to: {resolved_path}")
+                else:
+                    # Fallback: document is in the root, so include is relative to srcdir
+                    resolved_path = (srcdir_path / include_path).resolve()
+                    possible_paths.append(resolved_path)
+                    self._debug_log(f"Fallback resolution: {resolved_path}")
+            else:
+                # This is a nested include from an actual snippet file
+                # Strip leading ../ parts and resolve from srcdir
+                clean_path = include_path
+                while clean_path.startswith('../'):
+                    clean_path = clean_path[3:]  # Remove '../'
+
+                resolved_path = (srcdir_path / clean_path).resolve()
+                possible_paths.append(resolved_path)
+
+        # Check which files exist
+        for path in possible_paths:
+            exists = path.exists()
+            self._debug_log(f"Path {path} exists: {exists}")
 
         return possible_paths
+
+    def _debug_log(self, message: str):
+        """Write debug message to a file."""
+        # Put it in your project's build directory
+        debug_file = Path(self.srcdir) / "_build" / "sphinx-llms-txt-debug.log"
+        with open(debug_file, "a", encoding="utf-8") as f:
+            f.write(f"{message}\n")
 
     def _process_includes(self, content: str, source_path: Path) -> str:
         """Process include directives in content.
@@ -289,42 +616,92 @@ class DocumentProcessor:
         # Find all include directives using regex
         include_pattern = build_directive_pattern(["include"])
 
+        # Check if there are any includes in the content
+        matches = include_pattern.findall(content)
+        if matches:
+            self._debug_log(f"Found {len(matches)} include directives in {source_path}")
+            for match in matches:
+                self._debug_log(f"Include directive: {match}")
+        else:
+            # Check if content contains "include::" at all
+            if "include::" in content:
+                self._debug_log(f"File {source_path} contains 'include::' but regex didn't match")
+                # Show first few lines that contain include
+                lines = content.split('\n')
+                for i, line in enumerate(lines):
+                    if 'include::' in line:
+                        self._debug_log(f"Line {i+1}: {line}")
+                        if i > 0:
+                            self._debug_log(f"Previous line: {lines[i-1]}")
+                        if i < len(lines) - 1:
+                            self._debug_log(f"Next line: {lines[i+1]}")
+                        break
+
         # Function to replace each include with content
         def replace_include(match):
             include_path = match.group(3)
-            directive_part = match.group(
-                1
-            )  # The ".. include:: " part with leading whitespace
+            directive_part = match.group(1)  # The full prefix including ".. include:: "
+
+            self._debug_log(f"Processing include: {include_path}")
+            self._debug_log(f"Directive part: '{directive_part}'")
 
             # Get all possible paths to try
             possible_paths = self._resolve_include_paths(include_path, source_path)
+            self._debug_log(f"Trying {len(possible_paths)} paths")
 
             # Try each possible path
             for path_to_try in possible_paths:
+                self._debug_log(f"Trying path: {path_to_try}")
                 try:
                     if path_to_try.exists():
+                        self._debug_log(f"Found file at: {path_to_try}")
                         with open(path_to_try, "r", encoding="utf-8") as f:
                             included_content = f.read()
+
+                        # Process substitutions in included content too
+                        included_content = self._process_substitutions(included_content)
+
+                        # Remove image directives from included content
+                        included_content = self._remove_image_directives(included_content)
+
+                        # Remove unknown/comment directives
+                        included_content = self._remove_unknown_directives(included_content)
+
+                        # Remove block directives and their content
+                        included_content = self._remove_block_directives(included_content)
+
+                        # Remove "See also" sections
+                        included_content = self._remove_see_also_sections(included_content)
+
+                        # Remove "What's next" sections
+                        included_content = self._remove_whats_next_sections(included_content)
+
+                        # RECURSIVELY process any includes within the included content
+                        # This handles cases where snippets include other snippets
+                        included_content = self._process_includes(included_content, path_to_try)
 
                         # Find where the actual directive starts, after any whitespace
                         directive_start = directive_part.find("..")
                         if directive_start > 0:
-                            # There's leading whitespace/newlines before the directive
+                            # There's leading content before the directive
                             leading_part = directive_part[:directive_start]
                             # Replace directive with content, preserving the structure
-                            return leading_part + included_content
+                            result = leading_part + included_content
+                            self._debug_log(f"Replaced with {len(included_content)} chars, preserving {directive_start} chars of leading content")
+                            return result
                         else:
-                            # No leading whitespace, just return the content
+                            # No leading content, just return the content
+                            self._debug_log(f"Replaced with {len(included_content)} chars, no leading content")
                             return included_content
+                    else:
+                        self._debug_log(f"File does not exist: {path_to_try}")
 
                 except Exception as e:
-                    logger.error(
-                        f"sphinx-llms-txt: Error reading include file {path_to_try}:"
-                        f" {e}"
-                    )
+                    self._debug_log(f"Error reading {path_to_try}: {e}")
                     continue
 
             # If we get here, we couldn't find the file
+            self._debug_log(f"Could not find include file: {include_path}")
             paths_tried = ", ".join(str(p) for p in possible_paths)
             logger.warning(f"sphinx-llms-txt: Include file not found: {include_path}")
             logger.debug(f"sphinx-llms-txt: Tried paths: {paths_tried}")

@@ -3,6 +3,7 @@ Main manager module for sphinx-llms-txt.
 """
 
 import glob
+import re
 import subprocess
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -170,6 +171,10 @@ class LLMSFullManager:
         """Set configuration options."""
         self.config = config
         self.collector.set_config(config)
+
+        # Pass the app instance to config so processor can access it
+        if self.app:
+            config['app'] = self.app
 
         # Initialize processor and writer with config
         self.processor = DocumentProcessor(config, self.srcdir)
@@ -573,14 +578,24 @@ class LLMSFullManager:
             # Process include directives and directives with paths
             content = self.processor.process_content(content, file_path)
 
+            # Remove :class: inline directives
+            content = re.sub(r'^\s*:class:\s+inline\s*$', '', content, flags=re.MULTILINE)
+
+            # Replace multiple consecutive empty lines with single empty line
+            content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)
+
+            # Create metadata header
+            metadata_header = self._create_metadata_header(docname)
+
             # Count the lines in the content
             line_count = content.count("\n") + (0 if content.endswith("\n") else 1)
 
-            section_lines = [content, ""]
+            section_lines = [metadata_header, content, ""]
             content_str = "\n".join(section_lines)
 
-            # Add 2 for the section_lines (content + empty line)
-            return content_str, line_count + 1
+            # Add lines for metadata header + content + empty line
+            metadata_line_count = metadata_header.count("\n") + 1
+            return content_str, line_count + metadata_line_count + 1
 
         except Exception as e:
             logger.error(f"sphinx-llms-txt: Error reading source file {file_path}: {e}")
@@ -978,3 +993,40 @@ class LLMSFullManager:
             logger.error(
                 f"sphinx-llms-txt: Error writing placeholder file {output_path}: {e}"
             )
+
+    def _create_metadata_header(self, docname: str) -> str:
+        """Create metadata header for a document.
+
+        Args:
+            docname: The document name
+
+        Returns:
+            Formatted metadata header string
+        """
+        # Get the title from collector's page_titles
+        title = self.collector.page_titles.get(docname, docname)
+
+        # Build the source URL
+        base_url = self.config.get("html_baseurl", "")
+        if not base_url.endswith("/") and base_url:
+            base_url += "/"
+
+        # Handle language configuration
+        language = None
+        if self.app and hasattr(self.app.config, 'language') and self.app.config.language:
+            language = self.app.config.language
+
+        # Construct the URL with language if specified
+        if language and language != 'en':  # Don't add 'en' to URL as it's typically default
+            source_url = f"{base_url}{language}/{docname}.html"
+        else:
+            source_url = f"{base_url}{docname}.html"
+
+        # Create the metadata header
+        header = f"""----------------------------------------
+
+TITLE: {title}
+SOURCE: {source_url}
+"""
+
+        return header
