@@ -1,6 +1,12 @@
 Changelog
 =========
 
+0.5.4
+-----
+
+- Fixes issue with resolving paths on Windows when including files from snippets.
+  Now includes are resolved relative to the source directory, matching Sphinx behavior.
+
 0.5.3
 -----
 

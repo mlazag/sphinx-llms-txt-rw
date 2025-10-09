@@ -8,6 +8,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sphinx-llms-txt-rw"
 description = "llms-full.txt generator for Sphinx"
+requires-python = ">=3.9"
 authors = [
     {name = "Mladen Zagorac"},
 ]
