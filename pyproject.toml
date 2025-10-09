@@ -9,10 +9,10 @@ build-backend = "setuptools.build_meta"
 name = "sphinx-llms-txt-rw"
 description = "llms-full.txt generator for Sphinx"
 authors = [
-    {name = "Mladen Zagorac", email = "mlazag@proton.me"},
+    {name = "Mladen Zagorac"},
 ]
 maintainers = [
-    {name = "Mladen Zagorac", email = "mlazag@proton.me"},
+    {name = "Mladen Zagorac"},
 ]
 classifiers = [
     "Framework :: Sphinx :: Extension",

@@ -1,5 +1,5 @@
 """
-File writer module for sphinx-llms-txt.
+File writer module for sphinx-llms-txt-rw.
 """
 
 from pathlib import Path
@@ -37,12 +37,12 @@ class FileWriter:
                 f.write("\n".join(content_parts))
 
             logger.info(
-                f"sphinx-llms-txt: Created {output_path} with {len(content_parts)}"
+                f"sphinx-llms-txt-rw: Created {output_path} with {len(content_parts)}"
                 f" sources and {total_line_count} lines"
             )
             return True
         except Exception as e:
-            logger.error(f"sphinx-llms-txt: Error writing combined sources file: {e}")
+            logger.error(f"sphinx-llms-txt-rw: Error writing combined sources file: {e}")
             return False
 
     def write_verbose_info_to_file(
@@ -63,7 +63,7 @@ class FileWriter:
         """
         if not self.outdir:
             logger.warning(
-                "sphinx-llms-txt: Cannot write verbose info to file: outdir not set"
+                "sphinx-llms-txt-rw: Cannot write verbose info to file: outdir not set"
             )
             return False
 
@@ -111,8 +111,8 @@ class FileWriter:
                     title = page_titles.get(docname, docname)
                     f.write(f"- [{title}]({base_url}{docname}.html)\n")
 
-            logger.info(f"sphinx-llms-txt: created {output_path}")
+            logger.info(f"sphinx-llms-txt-rw: created {output_path}")
             return True
         except Exception as e:
-            logger.error(f"sphinx-llms-txt: Error writing verbose info to file: {e}")
+            logger.error(f"sphinx-llms-txt-rw: Error writing verbose info to file: {e}")
             return False

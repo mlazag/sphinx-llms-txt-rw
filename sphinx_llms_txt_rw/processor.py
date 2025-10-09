@@ -1,5 +1,5 @@
 """
-Document processor module for sphinx-llms-txt.
+Document processor module for sphinx-llms-txt-rw.
 """
 
 import os
@@ -59,7 +59,7 @@ class DocumentProcessor:
         for var_name, replacement in matches:
             self.substitutions[var_name.strip()] = replacement.strip()
 
-        logger.debug(f"sphinx-llms-txt: Extracted {len(self.substitutions)} substitutions")
+        logger.debug(f"sphinx-llms-txt-rw: Extracted {len(self.substitutions)} substitutions")
 
     def _process_substitutions(self, content: str) -> str:
         """Replace substitution variables with their values.
@@ -372,20 +372,37 @@ class DocumentProcessor:
             Tuple of (rel_doc_path, rel_doc_dir, rel_doc_path_parts)
         """
         try:
-            # Extract the part after _sources/
-            path_parts = str(source_path).split("_sources/")
-            if len(path_parts) > 1:
-                rel_doc_path = path_parts[1]
-                # Remove .txt extension if present
-                if rel_doc_path.endswith(".txt"):
-                    rel_doc_path = rel_doc_path[:-4]
-                # Get the directory containing the current document
-                rel_doc_dir = os.path.dirname(rel_doc_path)
-                rel_doc_path_parts = rel_doc_path.split("/")
+            # Convert to string
+            path_str = str(source_path)
+            
+            # Find _sources in the path (works regardless of path separator)
+            if "_sources" not in path_str:
+                return None, None, None
+            
+            # Find the position of _sources
+            sources_index = path_str.find("_sources")
+            if sources_index == -1:
+                return None, None, None
+            
+            # Get everything after _sources/ or _sources\ (skip the separator)
+            after_sources_start = sources_index + len("_sources") + 1
+            rel_doc_path = path_str[after_sources_start:]
+            
+            # Remove .txt extension if present
+            if rel_doc_path.endswith(".txt"):
+                rel_doc_path = rel_doc_path[:-4]
+            
+            # Get the directory containing the current document
+            # Use os.path.dirname which handles both separators
+            rel_doc_dir = os.path.dirname(rel_doc_path)
+            
+            # Normalize to forward slashes for consistent splitting
+            rel_doc_path_normalized = rel_doc_path.replace('\\', '/')
+            rel_doc_path_parts = rel_doc_path_normalized.split("/")
 
-                return rel_doc_path, rel_doc_dir, rel_doc_path_parts
+            return rel_doc_path, rel_doc_dir, rel_doc_path_parts
         except Exception as e:
-            logger.debug(f"sphinx-llms-txt: Error extracting relative path: {e}")
+            logger.debug(f"sphinx-llms-txt-rw: Error extracting relative path: {e}")
 
         return None, None, None
 
@@ -571,22 +588,24 @@ class DocumentProcessor:
                     # Calculate the original document's full path
                     original_doc_path = srcdir_path / rel_doc_path
                     original_doc_dir = original_doc_path.parent
-                    resolved_path = (original_doc_dir / include_path).resolve()
+                    
+                    # Use os.path.normpath to properly handle ../ on Windows
+                    combined_path = original_doc_dir / include_path
+                    resolved_path = Path(os.path.normpath(str(combined_path)))
                     possible_paths.append(resolved_path)
                     self._debug_log(f"Relative include resolved to: {resolved_path}")
                 else:
                     # Fallback: document is in the root, so include is relative to srcdir
-                    resolved_path = (srcdir_path / include_path).resolve()
+                    combined_path = srcdir_path / include_path
+                    resolved_path = Path(os.path.normpath(str(combined_path)))
                     possible_paths.append(resolved_path)
                     self._debug_log(f"Fallback resolution: {resolved_path}")
             else:
                 # This is a nested include from an actual snippet file
-                # Strip leading ../ parts and resolve from srcdir
-                clean_path = include_path
-                while clean_path.startswith('../'):
-                    clean_path = clean_path[3:]  # Remove '../'
-
-                resolved_path = (srcdir_path / clean_path).resolve()
+                # Get the directory containing the current snippet file
+                snippet_dir = source_path.parent
+                combined_path = snippet_dir / include_path
+                resolved_path = Path(os.path.normpath(str(combined_path)))
                 possible_paths.append(resolved_path)
 
         # Check which files exist
@@ -599,7 +618,7 @@ class DocumentProcessor:
     def _debug_log(self, message: str):
         """Write debug message to a file."""
         # Put it in your project's build directory
-        debug_file = Path(self.srcdir) / "_build" / "sphinx-llms-txt-debug.log"
+        debug_file = Path(self.srcdir) / "_build" / "sphinx-llms-txt-rw-debug.log"
         with open(debug_file, "a", encoding="utf-8") as f:
             f.write(f"{message}\n")
 
@@ -703,8 +722,8 @@ class DocumentProcessor:
             # If we get here, we couldn't find the file
             self._debug_log(f"Could not find include file: {include_path}")
             paths_tried = ", ".join(str(p) for p in possible_paths)
-            logger.warning(f"sphinx-llms-txt: Include file not found: {include_path}")
-            logger.debug(f"sphinx-llms-txt: Tried paths: {paths_tried}")
+            logger.warning(f"sphinx-llms-txt-rw: Include file not found: {include_path}")
+            logger.debug(f"sphinx-llms-txt-rw: Tried paths: {paths_tried}")
 
             # Preserve spacing structure for error message too
             directive_start = match.group(1).find("..")

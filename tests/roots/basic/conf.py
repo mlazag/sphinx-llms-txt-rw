@@ -14,7 +14,7 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 html_theme = "alabaster"
 html_static_path = ["_static"]
 
-# Configuration for sphinx-llms-txt
+# Configuration for sphinx-llms-txt-rw
 llms_txt_full_filename = "test-llms-full.txt"
 llms_txt_file = True
 

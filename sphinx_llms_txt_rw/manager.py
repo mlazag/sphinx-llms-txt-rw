@@ -1,5 +1,5 @@
 """
-Main manager module for sphinx-llms-txt.
+Main manager module for sphinx-llms-txt-rw.
 """
 
 import glob
@@ -232,12 +232,12 @@ class LLMSFullManager:
         output_path = Path(outdir) / output_filename
 
         # Log discovered files and page order
-        logger.debug(f"sphinx-llms-txt: Page order (after exclusion): {page_order}")
+        logger.debug(f"sphinx-llms-txt-rw: Page order (after exclusion): {page_order}")
 
         # Log exclusion patterns
         exclude_patterns = self.config.get("llms_txt_exclude")
         if exclude_patterns:
-            logger.debug(f"sphinx-llms-txt: Exclusion patterns: {exclude_patterns}")
+            logger.debug(f"sphinx-llms-txt-rw: Exclusion patterns: {exclude_patterns}")
 
         # Create a mapping from docnames to source files
         docname_to_file = {}
@@ -278,12 +278,12 @@ class LLMSFullManager:
                     docname_to_file[docname] = source_file
                 else:
                     logger.warning(
-                        f"sphinx-llms-txt: Source file not found for: {docname}."
+                        f"sphinx-llms-txt-rw: Source file not found for: {docname}."
                         f"Expected: {docname}{expected_suffix}"
                     )
             else:
                 logger.warning(
-                    f"sphinx-llms-txt: No source suffix determined for: {docname}"
+                    f"sphinx-llms-txt-rw: No source suffix determined for: {docname}"
                 )
 
         # Generate content
@@ -314,7 +314,7 @@ class LLMSFullManager:
         for docname, _ in page_order:
             # Skip pages marked as ignored
             if docname in self.ignored_pages:
-                logger.debug(f"sphinx-llms-txt: Skipping ignored page: {docname}")
+                logger.debug(f"sphinx-llms-txt-rw: Skipping ignored page: {docname}")
                 continue
 
             if docname in docname_to_file:
@@ -328,7 +328,7 @@ class LLMSFullManager:
                     and should_abort_early
                 ):
                     logger.debug(
-                        f"sphinx-llms-txt: Stopping collection due to size limit. "
+                        f"sphinx-llms-txt-rw: Stopping collection due to size limit. "
                         f"File {docname} would exceed limit."
                     )
                     aborted_due_to_size = True
@@ -349,7 +349,7 @@ class LLMSFullManager:
                         for pattern in exclude_patterns
                     ):
                         logger.debug(
-                            f"sphinx-llms-txt: Final exclusion check removed: {docname}"
+                            f"sphinx-llms-txt-rw: Final exclusion check removed: {docname}"
                         )
                         should_include = False
 
@@ -359,7 +359,7 @@ class LLMSFullManager:
                     total_line_count += line_count
             else:
                 logger.warning(
-                    f"sphinx-llms-txt: Source file not found for: {docname}. Check that"
+                    f"sphinx-llms-txt-rw: Source file not found for: {docname}. Check that"
                     f" file exists at _sources/{docname}[suffix]{source_link_suffix}"
                 )
 
@@ -417,7 +417,7 @@ class LLMSFullManager:
                 # Skip pages marked as ignored
                 if docname in self.ignored_pages:
                     logger.debug(
-                        f"sphinx-llms-txt: Skipping ignored remaining file: {docname}"
+                        f"sphinx-llms-txt-rw: Skipping ignored remaining file: {docname}"
                     )
                     continue
 
@@ -426,7 +426,7 @@ class LLMSFullManager:
                     self.collector._match_exclude_pattern(docname, pattern)
                     for pattern in exclude_patterns
                 ):
-                    logger.debug(f"sphinx-llms-txt: Skipping excluded file: {docname}")
+                    logger.debug(f"sphinx-llms-txt-rw: Skipping excluded file: {docname}")
                     continue
 
                 # Read and process the file
@@ -442,7 +442,7 @@ class LLMSFullManager:
                     break
 
                 if content:
-                    logger.debug(f"sphinx-llms-txt: Adding remaining file: {docname}")
+                    logger.debug(f"sphinx-llms-txt-rw: Adding remaining file: {docname}")
                     content_parts.append(content)
                     total_line_count += line_count
 
@@ -462,7 +462,7 @@ class LLMSFullManager:
                 and should_abort_early
             ):
                 logger.warning(
-                    f"sphinx-llms-txt: Adding code files would exceed max line limit "
+                    f"sphinx-llms-txt-rw: Adding code files would exceed max line limit "
                     f"({max_lines}). Current: {total_line_count}, "
                     f"Code files: {code_files_line_count}. Skipping code files."
                 )
@@ -493,7 +493,7 @@ class LLMSFullManager:
 
             # Log with the specified level
             filename = self.config.get("llms_txt_full_filename", "llms-full.txt")
-            message = f"sphinx-llms-txt: Max lines ({max_lines}) exceeded for {filename}"  # noqa: E501
+            message = f"sphinx-llms-txt-rw: Max lines ({max_lines}) exceeded for {filename}"  # noqa: E501
 
             if log_level == "info":
                 logger.info(message)
@@ -503,7 +503,7 @@ class LLMSFullManager:
             # Handle different actions
             if action == "skip":
                 filename = self.config.get("llms_txt_full_filename", "llms-full.txt")
-                logger.info(f"sphinx-llms-txt: Skipping {filename} generation")
+                logger.info(f"sphinx-llms-txt-rw: Skipping {filename} generation")
                 # Log summary information if requested
                 if self.config.get("llms_txt_file"):
                     filtered_page_order = self._filter_ignored_pages(page_order)
@@ -514,7 +514,7 @@ class LLMSFullManager:
                     )
                 return
             elif action == "note":
-                logger.info(f"sphinx-llms-txt: Creating placeholder {output_path}")
+                logger.info(f"sphinx-llms-txt-rw: Creating placeholder {output_path}")
                 self._write_placeholder_file(output_path, max_lines)
 
                 # Log summary information if requested
@@ -598,7 +598,7 @@ class LLMSFullManager:
             return content_str, line_count + metadata_line_count + 1
 
         except Exception as e:
-            logger.error(f"sphinx-llms-txt: Error reading source file {file_path}: {e}")
+            logger.error(f"sphinx-llms-txt-rw: Error reading source file {file_path}: {e}")
             return "", 0
 
     def _get_source_suffixes(self):
@@ -646,7 +646,7 @@ class LLMSFullManager:
             else:
                 # No prefix = log warning about ignored pattern
                 logger.warning(
-                    f"sphinx-llms-txt: Code file pattern '{pattern}' ignored."
+                    f"sphinx-llms-txt-rw: Code file pattern '{pattern}' ignored."
                     f"Use '+:{pattern}' to include or '-:{pattern}' to exclude."
                 )
 
@@ -691,7 +691,7 @@ class LLMSFullManager:
                 if str(file_path) in exclude_matches:
                     should_exclude = True
                     logger.debug(
-                        f"sphinx-llms-txt: Excluding code file: {file_path} "
+                        f"sphinx-llms-txt-rw: Excluding code file: {file_path} "
                         f"(matched pattern: {exclude_pattern})"
                     )
                     break
@@ -773,11 +773,11 @@ class LLMSFullManager:
                 code_parts.append(code_block)
 
                 processed_files.add(file_path)
-                logger.debug(f"sphinx-llms-txt: Added code file: {title}")
+                logger.debug(f"sphinx-llms-txt-rw: Added code file: {title}")
 
             except Exception as e:
                 logger.warning(
-                    f"sphinx-llms-txt: Error reading code file {file_path}: {e}"
+                    f"sphinx-llms-txt-rw: Error reading code file {file_path}: {e}"
                 )
                 continue
 
@@ -938,7 +938,7 @@ class LLMSFullManager:
         """
         if not size_policy or "_" not in size_policy:
             logger.warning(
-                f"sphinx-llms-txt: Invalid llms_txt_full_size_policy "
+                f"sphinx-llms-txt-rw: Invalid llms_txt_full_size_policy "
                 f"format: '{size_policy}'. "
                 f"Using default 'warn_skip'."
             )
@@ -950,7 +950,7 @@ class LLMSFullManager:
         # Validate log level
         if log_level not in ["warn", "info"]:
             logger.warning(
-                f"sphinx-llms-txt: Invalid log level '{log_level}' in "
+                f"sphinx-llms-txt-rw: Invalid log level '{log_level}' in "
                 f"llms_txt_full_size_policy. "
                 f"Valid options: warn, info. Using 'warn'."
             )
@@ -959,7 +959,7 @@ class LLMSFullManager:
         # Validate action
         if action not in ["keep", "skip", "note"]:
             logger.warning(
-                f"sphinx-llms-txt: Invalid action '{action}' in "
+                f"sphinx-llms-txt-rw: Invalid action '{action}' in "
                 f"llms_txt_full_size_policy. "
                 f"Valid options: keep, skip, note. Using 'skip'."
             )
@@ -988,10 +988,10 @@ class LLMSFullManager:
         try:
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(placeholder_content)
-            logger.debug(f"sphinx-llms-txt: Wrote placeholder file: {output_path}")
+            logger.debug(f"sphinx-llms-txt-rw: Wrote placeholder file: {output_path}")
         except Exception as e:
             logger.error(
-                f"sphinx-llms-txt: Error writing placeholder file {output_path}: {e}"
+                f"sphinx-llms-txt-rw: Error writing placeholder file {output_path}: {e}"
             )
 
     def _create_metadata_header(self, docname: str) -> str:

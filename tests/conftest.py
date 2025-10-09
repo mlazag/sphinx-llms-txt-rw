@@ -1,4 +1,4 @@
-"""Pytest configuration for sphinx-llms-txt."""
+"""Pytest configuration for sphinx-llms-txt-rw."""
 
 import os
 import shutil

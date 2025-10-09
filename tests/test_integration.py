@@ -1,4 +1,4 @@
-"""Integration tests for sphinx-llms-txt."""
+"""Integration tests for sphinx-llms-txt-rw."""
 
 import sys
 from pathlib import Path
