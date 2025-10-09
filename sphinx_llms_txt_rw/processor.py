@@ -601,13 +601,12 @@ class DocumentProcessor:
                     possible_paths.append(resolved_path)
                     self._debug_log(f"Fallback resolution: {resolved_path}")
             else:
-                # This is a nested include from an actual snippet file
-                # Get the directory containing the current snippet file
-                snippet_dir = source_path.parent
-                combined_path = snippet_dir / include_path
+                # For nested includes (from snippet files), resolve relative to srcdir
+                # This matches Sphinx behavior
+                combined_path = srcdir_path / include_path
                 resolved_path = Path(os.path.normpath(str(combined_path)))
                 possible_paths.append(resolved_path)
-
+                self._debug_log(f"Include from snippet resolved relative to srcdir: {resolved_path}")
         # Check which files exist
         for path in possible_paths:
             exists = path.exists()
@@ -697,7 +696,7 @@ class DocumentProcessor:
 
                         # RECURSIVELY process any includes within the included content
                         # This handles cases where snippets include other snippets
-                        included_content = self._process_includes(included_content, path_to_try)
+                        included_content = self._process_includes(included_content, source_path)
 
                         # Find where the actual directive starts, after any whitespace
                         directive_start = directive_part.find("..")
