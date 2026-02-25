@@ -21,7 +21,7 @@ from .manager import LLMSFullManager
 from .processor import DocumentProcessor
 from .writer import FileWriter
 
-__version__ = "0.5.4"
+__version__ = "0.5.5"
 
 # Export classes needed by tests
 __all__ = [

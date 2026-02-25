@@ -1,6 +1,15 @@
 Changelog
 =========
 
+0.5.5
+-----
+
+- Remove language-based URL construction from ``llms-full.txt`` metadata headers.
+  The extension no longer injects a language path segment into SOURCE URLs.
+  This is consistent with how Sphinx itself uses ``html_baseurl`` for canonical URLs.
+  Projects that include a language segment in their deployment URL should include it
+  in ``html_baseurl`` directly.
+
 0.5.4
 -----
 

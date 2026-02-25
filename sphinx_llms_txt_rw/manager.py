@@ -1006,21 +1006,13 @@ class LLMSFullManager:
         # Get the title from collector's page_titles
         title = self.collector.page_titles.get(docname, docname)
 
-        # Build the source URL
+        # Build the source URL using html_baseurl as-is, consistent with
+        # how Sphinx itself constructs canonical URLs.
         base_url = self.config.get("html_baseurl", "")
         if not base_url.endswith("/") and base_url:
             base_url += "/"
 
-        # Handle language configuration
-        language = None
-        if self.app and hasattr(self.app.config, 'language') and self.app.config.language:
-            language = self.app.config.language
-
-        # Construct the URL with language if specified
-        if language and language != 'en':  # Don't add 'en' to URL as it's typically default
-            source_url = f"{base_url}{language}/{docname}.html"
-        else:
-            source_url = f"{base_url}{docname}.html"
+        source_url = f"{base_url}{docname}.html"
 
         # Create the metadata header
         header = f"""----------------------------------------
